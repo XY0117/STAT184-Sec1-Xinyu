@@ -1,0 +1,180 @@
+---
+title: "Admissions Bias"
+author: "Linda the Second of Saskatoon"
+format: html
+editor: visual
+---
+
+```{r}
+#| label: load-packages
+#| include: false
+#| warning: false
+#load packages
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+```
+
+```{r}
+#| echo: false
+# Prompt:
+# The year is 1973. UC Berkeley has been sued for sex-based admissions 
+# discrimination. Specifically, the plaintiff claims that women are discrimina-
+# ted against in admissions policies. The court has provided admissions data to 
+# you and tasked you with answering the question -- if a student applies to the 
+# school, will their gender play a significant role in their chance of admission?
+# (We are keeping the analysis limited to this dataset)
+
+#load the data
+url <- "https://waf.cs.illinois.edu/discovery/berkeley.csv"
+data <- read.csv(url)
+```
+
+## descriptive statistics
+
+```{r}
+#| warning: false
+#| echo: false
+#EDA
+head(data)
+summary(data)
+
+```
+
+First, make sure that the data set is tidy data, and use descriptive statistics which totaled 12,763 people.
+
+## Bar chart of admission rate by gender
+
+```{r}
+#| label: plot-admission rate
+#| warning: false
+#| echo: false
+# Calculate the admission rates by gender
+table(data$Gender, data$Admission)
+
+admission_rates_gender <- data %>%
+  group_by(Gender) %>%
+  summarize(
+    Total = n(),
+    Accepted = sum(Admission == "Accepted"),
+    Admission_Rate = Accepted / Total
+  )
+ggplot(admission_rates_gender, aes(x = Gender, y = Admission_Rate)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Admission Rates by Gender", 
+       x = "Gender", 
+       y = "Admission Rate") +
+  theme_minimal()
+
+
+
+```
+
+Looking at the chart the acceptance rate for males (M) is slightly higher than for females (F).In order to research further if it is the specialty that is causing this.
+
+## Bar chart of admissions rate by major
+
+```{r}
+#| label: plot-admissions rate by major
+#| warning: false
+#| echo: false
+#Admissions rate by major
+admission_rate_major <- data %>%
+  select(Major, Admission) %>%
+  group_by(Major) %>%
+  summarize(
+    Total = n(),
+    Accepted = sum(Admission == "Accepted"),
+    Admission_Rate = Accepted / Total
+  )
+ggplot(admission_rate_major, aes(x = Major, y = Admission_Rate)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Admission Rates by Major", 
+       x = "Major", 
+       y = "Admission Rate") +
+  theme_minimal()
+
+
+```
+
+This bar chart showing acceptance rates by major provides a comparison of acceptance rates by field of study.Majors A and B have significantly higher acceptance rates than the other majors, suggesting that the admissions process for these majors may be less competitive or that applicants to these majors are more qualified on average.We should further analyze it in relation to gender.
+
+## Applications by Major and Gender
+
+```{r}
+#| label: plot-applications by Major and Gender
+#| warning: false
+#| echo: false
+#Applications by Gender, Major
+applications_gender_major <- data %>%
+  select(Major, Gender) %>%
+  group_by(Major, Gender) %>%
+  summarize(
+    Total = n()
+  )
+ggplot(applications_gender_major, aes(x = Major, y = Total, fill = Gender)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Total Applications by Major and Gender", 
+       x = "Major", 
+       y = "Applications") +
+  theme_minimal()
+
+
+```
+
+This bar graph shows the total number of applications by specialty and gender.This will reveal whether certain majors are more competitive for one gender than the other when applying to different majors.It can be seen that the difference between male and female admissions in majors A and B is much higher than in the other majors, and that there are more female admissions in majors C and E, but male admissions are also overrepresented in the sum of the other majors.However, the number of male and female applicants is not the same and should be further explored using ratios.
+
+## See admission rates broken down by gender and major
+
+```{r}
+#| label: plot-admission rates broken down by gender and major
+#| warning: false
+#| echo: false
+#See admission rates broken down by gender and major
+admission_rates_gender_major <- data %>%
+  group_by(Major, Gender) %>%
+  summarize(
+    Total = n(),
+    Accepted = sum(Admission == "Accepted"),
+    Admission_Rate = Accepted / Total
+  )
+
+head(admission_rates_gender_major)
+
+ggplot(admission_rates_gender_major, aes(x = Major, y = Admission_Rate, fill = Gender)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Admission Rates by Major and Gender", 
+       x = "Major", 
+       y = "Admission Rate") +
+  theme_minimal()
+
+
+```
+
+This bar graph shows the acceptance rates by major and gender.It describes how the acceptance rate for each field varies not only by major, but also by gender.The acceptance rate for women in Major A is slightly higher than for men, suggesting that the major may be slightly more favorable or accessible to female applicants.However, there is not a very dramatic difference between men and women in all other majors except for Major A, so I don't think there is a clear preference between male and female admissions.
+
+## See admission rate gender difference by major
+
+```{r}
+#| label: plot-admission rate gender difference by major
+#| warning: false
+#| echo: false
+#See the admissions rate gender difference by major
+admission_rate_diff <- admission_rates_gender_major %>%
+  select(Major, Gender, Admission_Rate) %>%
+  pivot_wider(names_from = Gender, values_from = Admission_Rate) %>%
+  mutate(Difference = M - F)
+
+ggplot(admission_rate_diff, aes(x = Major, y = Difference, fill = Difference > 0)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("dark green", "skyblue"), 
+                    labels = c("Female Higher", "Male Higher")) +  # Red for below 0, skyblue for above 0
+  labs(title = "Difference Between Male and Female Admission Rates by Major",
+       x = "Major", 
+       y = "Difference (Male - Female)") +
+  geom_hline(yintercept = 0, linetype = "dotted", color = "black", size = 1) +  # Add horizontal dotted line at y = 0
+  theme_minimal() +
+  theme(legend.title = element_blank())
+```
+
+The chart shows the difference in acceptance rates between male and female applicants for different majors, with positive values indicating higher acceptance rates for males and negative values indicating higher acceptance rates for females.The acceptance rate for females is significantly higher than that of males in Major A. This may indicate that females are more likely to be admitted to the program than males.This may indicate that females have a preference or advantage in the admissions process for that major.With this in mind the differences are small except for Majors A and B.So I don't think we have enough evidence to accuse Berkeley of having gender bias in admissions.
